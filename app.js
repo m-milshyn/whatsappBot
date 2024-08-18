@@ -1,14 +1,20 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
+const qrcode_terminal = require('qrcode-terminal');
 
 // Initialize WhatsApp Client
-const client = new Client({
-    authStrategy: new LocalAuth() // This will handle storing and reusing your session
-});
+// const client = new Client({
+//     authStrategy: new LocalAuth() // This will handle storing and reusing your session
+//     puppeteer: {
+//         executablePath: chromium.path // Указываем путь к установленному Chromium
+//     }
+// });
 
-// Generate and display QR code for WhatsApp Web
-client.on('qr', (qr) => {
-    qrcode.generate(qr, { small: true });
+const client = new Client({
+    puppeteer: {
+        headless: true,
+        args: ['--no-sandbox'],
+        authStrategy: new LocalAuth()
+    }
 });
 
 // Client is ready to start handling messages
@@ -324,7 +330,7 @@ client.on('message', async (msg) => {
                 `10. * Полное имя *: ${questionnaireAnswer[chatId].answer10} \n` +
                 `11. * Контактный номер телефона *: ${questionnaireAnswer[chatId].answer11} `;
 
-            await client.sendMessage(chatId, message);
+            await client.sendMessage(process.env.MANAGER_GROUP, message);
 
             userStates[chatId].state = 'strategy_menu';
             await client.sendMessage(chatId, "Спасибо за заполнение анкеты. Мы скоро с вами свяжемся.\n\n Чтобы увидеть стратегии дохода отправьте цифру соответствующего пункта меню:\n\n" +
@@ -351,7 +357,7 @@ client.on('message', async (msg) => {
             userStates[chatId].question = 'fio';
         } else if (userStates[chatId].question === 'fio') {
             expertHelpAnswer[chatId].fio = msg.body;
-            await client.sendMessage(chatId,
+            await client.sendMessage(process.env.MANAGER_GROUP,
                 '💡 *Тема:* Экспертная помощь с недвижимостью\n' +
                 '📧 *Адрес электронной почты:* ' + expertHelpAnswer[msg.from].email + '\n' +
                 '📱 *Номер телефона:* ' + expertHelpAnswer[msg.from].phone + '\n' +
@@ -374,4 +380,33 @@ async function sendQuestion(chatId, text, optionss) {
 }
 
 // Start the client
+// (async () => {
+//     browser = await puppeteer.launch({
+//         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+//         args: [
+//             '--no-sandbox', '--disable-setuid-sandbox'
+//         ],
+//         headless: true,
+//     });
+//     client.initialize();
+// })();
+
 client.initialize();
+
+client.on('qr', async (qr) => {
+        console.log('QR RECEIVED');
+        qrcode_terminal.generate(qr, { small: true });
+});
+
+client.on('authenticated', () => {
+    console.log('AUTHENTICATED');
+});
+
+client.on('auth_failure', msg => {
+    // Fired if session restore was unsuccessful
+    console.error('AUTHENTICATION FAILURE', msg);
+});
+
+client.on('disconnected', (reason) => {
+    console.log('Client was logged out', reason);
+})
