@@ -1,8 +1,8 @@
+# Используем образ Node.js с Alpine Linux
 FROM node:18-alpine
 
 # Установка Chromium и необходимых библиотек
-# Устанавливаем необходимые зависимости для Chromium
-RUN apk add \
+RUN apk add --no-cache \
     chromium \
     nss \
     freetype \
@@ -20,7 +20,9 @@ RUN apk add \
     libxshmfence \
     libxcb \
     libxkbcommon \
-    libxkbcommon-x11
+    libxkbcommon-x11 \
+    bash
+
 # Создаем рабочую директорию
 WORKDIR /home/app
 
@@ -28,9 +30,9 @@ WORKDIR /home/app
 COPY package*.json ./
 RUN npm install
 
-# Копируем остальной код
+# Копируем остальной код приложения
 COPY . .
 
-# Устанавливаем переменные окружения
+# Устанавливаем переменные окружения для Puppeteer
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser

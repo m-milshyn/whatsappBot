@@ -7,5 +7,5 @@ services:
       context: ./
       dockerfile: .Dockerfile
     volumes:
-      - .:/home/app
+      - .:/home/app # Убедитесь, что путь правильный
     command: "node app.js"

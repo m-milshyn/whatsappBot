@@ -1,21 +1,34 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode_terminal = require('qrcode-terminal');
-
-// Initialize WhatsApp Client
-// const client = new Client({
-//     authStrategy: new LocalAuth() // This will handle storing and reusing your session
-//     puppeteer: {
-//         executablePath: chromium.path // Указываем путь к установленному Chromium
-//     }
-// });
+const fs = require('fs');
+const path = './data.json';
 
 const client = new Client({
+    authStrategy: new LocalAuth({
+        dataPath: '/tmp/session',
+    }),
     puppeteer: {
         headless: true,
-        args: ['--no-sandbox'],
-        authStrategy: new LocalAuth()
+        args: ['--no-sandbox']
     }
 });
+
+function saveData(key, data) {
+    let jsonData = {};
+    if (fs.existsSync(path)) {
+        jsonData = JSON.parse(fs.readFileSync(path));
+    }
+    jsonData[key] = data;
+    fs.writeFileSync(path, JSON.stringify(jsonData));
+}
+
+function loadData(key) {
+    if (fs.existsSync(path)) {
+        const jsonData = JSON.parse(fs.readFileSync(path));
+        return jsonData[key];
+    }
+    return null;
+}
 
 // Client is ready to start handling messages
 client.on('ready', () => {
@@ -56,6 +69,9 @@ const options = [
 
 // Handling incoming messages
 client.on('message', async (msg) => {
+    userStates = loadData('userStates') || {};
+    questionnaireAnswer = loadData('questionnaireAnswer') || {};
+    expertHelpAnswer = loadData('expertHelpAnswer') || {};
     const chatId = msg.from;
     console.log(`Received message from ${chatId}: ${msg.body}`);
 
@@ -371,7 +387,12 @@ client.on('message', async (msg) => {
                 "3. Аренда с последующей перепродажей\n\n" +
                 "Если же Вы хотите вернуться к первоначальному меню, то отправьте 'старт' в чат");
         }
+    } else {
+        await client.sendMessage(chatId, "Добро пожаловать в Condor Real Estates! Для начала работы с ботом, пожалуйста, напишите 'старт'.");
     }
+    saveData('userStates', userStates);
+    saveData('questionnaireAnswer', questionnaireAnswer);
+    saveData('expertHelpAnswer', expertHelpAnswer);
 });
 
 async function sendQuestion(chatId, text, optionss) {
@@ -379,23 +400,11 @@ async function sendQuestion(chatId, text, optionss) {
     await client.sendMessage(chatId, `${text} \n\n${optionssText} `);
 }
 
-// Start the client
-// (async () => {
-//     browser = await puppeteer.launch({
-//         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-//         args: [
-//             '--no-sandbox', '--disable-setuid-sandbox'
-//         ],
-//         headless: true,
-//     });
-//     client.initialize();
-// })();
-
 client.initialize();
 
 client.on('qr', async (qr) => {
-        console.log('QR RECEIVED');
-        qrcode_terminal.generate(qr, { small: true });
+    console.log('QR RECEIVED');
+    qrcode_terminal.generate(qr, { small: true });
 });
 
 client.on('authenticated', () => {
